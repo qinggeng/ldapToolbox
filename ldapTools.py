@@ -81,7 +81,6 @@ class Client:
 							ldif = tf.name,
 							host = self.server,
 							port = self.port)
-			os.system('cat "%s"' % (tf.name, ))
 			os.system(cmdStr)
 			return cmdStr
 
