@@ -4,7 +4,7 @@ import ldap as l
 import ldap.modlist as modlist
 from decorators import *
 from tempfile import NamedTemporaryFile
-import os
+import os, subprocess, shlex
 class Client:
 	u"""LDAP客户端"""
 	def __init__(self, **kwargs):
@@ -81,13 +81,37 @@ class Client:
 							ldif = tf.name,
 							host = self.server,
 							port = self.port)
-			os.system(cmdStr)
-			return cmdStr
+			return self.runCmd(cmdStr)
 
 	@conn_required
 	def delete(self, dn):
 		c = self.connection
 		return c.delete_s(dn)
+
+	def runCmd(self, cmd):
+		args = shlex.split(cmd)
+		p = subprocess.Popen(
+				args, 
+				stdout = subprocess.PIPE, 
+				stderr = subprocess.PIPE)
+		chout, cherr = p.communicate()
+		if p.returncode != 0:
+			err = cherr
+			return (False, err)
+		return (True, [])
+
+	@conn_required
+	def setPassword(self, dn, password):
+		cmdTemplate = r'ldappasswd -h "{host}" -p {port} -s "{password}" -w "{dnPass}" -D "{dn}" -x "{target}"'
+		cmd = cmdTemplate.format(
+				dn = self.bindDN,
+				dnPass = self.password,
+				target = dn,
+				password = password,
+				host = self.server,
+				port = self.port)
+		return self.runCmd(cmd)
+
 
 #	def treelizeEntries(self, entries):
 #		for entry in entries:
@@ -110,14 +134,16 @@ if __name__ == '__main__':
 	from testSettings import entryToAdd
 	dn = entryToAdd['dn']
 	attrs = entryToAdd['attrs']
-	print 'will add'
 	ret = client.search(settings['searchBase'], l.SCOPE_SUBTREE)
+	print 'ADD ENTRY====================='
+	client.add(dn, attrs)
+	ret = client.search(dn, l.SCOPE_SUBTREE)
 	pprint(ret)
-	print client.add(dn, attrs)
-	print 'added'
-	ret = client.search(settings['searchBase'], l.SCOPE_SUBTREE)
+	print 'SET ENTRY PASSWORD====================='
+	client.setPassword(dn, entryToAdd['pass'])
+	ret = client.search(dn, l.SCOPE_SUBTREE)
 	pprint(ret)
-	print client.delete(dn)
-	print 'delete'
+	print 'DELETE ENTRY====================='
+	client.delete(dn)
 	ret = client.search(settings['searchBase'], l.SCOPE_SUBTREE)
 	pprint(ret)

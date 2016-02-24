@@ -64,3 +64,7 @@ target/
 *.swp
 
 testSettings.py
+
+.ldapTools.py.swn
+
+.ldapTools.py.swo
